@@ -208,18 +208,6 @@ CI runs unit tests on Python 3.11 and 3.14, checks the packaged installers and r
 | `tests/` | Unit tests and GTK integration check |
 | `.github/workflows/` | CI and release automation |
 
-## Releases
-
-This repository uses the same release PR flow as [AI Status](https://github.com/gelzinn/ai-status), with one Python package. The version in `src/nautilus_docker/__init__.py` also supplies the build metadata and `--version` output.
-
-1. In repository **Settings → Actions → General → Workflow permissions**, allow GitHub Actions to create pull requests. The workflows request the required permissions.
-2. Optionally add a `BOT_TOKEN` Actions secret with repository contents and pull request write access, as in AI Status. Without it, preparation uses `GITHUB_TOKEN`; GitHub may require approval before CI runs on the bot's PR. See [GitHub's workflow trigger rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow).
-3. Run **Actions → Prepare Release → Run workflow** on `main`. Choose `auto`, `patch`, `minor` or `major`. The first release uses `0.1.0`; later automatic releases use Conventional Commits: breaking changes bump major, `feat` bumps minor, and other changes bump patch.
-4. Review the `release/vX.Y.Z` PR and its CI checks. Use **Squash and merge**, keeping the `chore: release vX.Y.Z` title. GitHub's default `(#PR)` suffix is accepted.
-5. The verified release commit triggers tests, then creates the matching tag and GitHub Release with generated notes, the source archive, wheel and `SHA256SUMS`.
-
-Release preparation promotes the **Unreleased** section of [CHANGELOG.md](CHANGELOG.md). Existing release branches are preserved. Publication validates the package version and tag target. Reruns preserve complete published releases and recover interrupted drafts by uploading the release assets before publishing. An already-published release with missing assets fails with a message for the maintainer to review it. To retry a failed publication after merging, rerun its workflow; **Release** can also be dispatched on `main` while its latest commit is the release commit.
-
 ## License
 
 [MIT](LICENSE) — Copyright © 2026 gelzin.com.
