@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Identify a verified release commit
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SUBJECT=$(git log -1 --format=%s)
+          if [[ "$SUBJECT" =~ ^chore:\ release\ v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\ \(#[0-9]+\))?$ ]]; then
+            VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          else
+            echo 'No release commit at HEAD.'
+            exit 0
+          fi
+          VERIFIED=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.commit.verification.verified')
+          if [ "$VERIFIED" != true ]; then
+            echo '::error::Release commits must have a verified signature. Squash and merge the release PR on GitHub.'
+            exit 1
+          fi
+          python3 scripts/release.py check --version "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: detect
+    if: needs.detect.outputs.version != ''
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: [detect, validate]
+    if: needs.detect.outputs.version != ''
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: publish-release
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.detect.outputs.version }}
+      TAG: ${{ needs.detect.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Build release assets
+        run: |
+          python scripts/release.py check --version "$VERSION"
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+          python scripts/check_dist.py
+          (cd dist && sha256sum *.tar.gz *.whl > SHA256SUMS)
+      - name: Tag the exact release commit
+        run: |
+          if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            TARGET=$(git rev-parse "$TAG^{commit}")
+            if [ "$TARGET" != "$GITHUB_SHA" ]; then
+              echo "::error::Tag $TAG points to a different commit."
+              exit 1
+            fi
+          else
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+              --field ref="refs/tags/$TAG" --field sha="$GITHUB_SHA"
+          fi
+      - name: Publish the GitHub release
+        run: |
+          PUBLISHED=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+            --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')
+          LATEST=$(python3 - "$VERSION" "$PUBLISHED" <<'PY'
+          import re
+          import sys
+          def parts(value):
+              match = re.fullmatch(r'v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', value)
+              return tuple(map(int, match.groups())) if match else None
+          current = parts(sys.argv[1])
+          released = [version for tag in sys.argv[2].splitlines() if (version := parts(tag)) is not None]
+          print(str(current >= max(released, default=current)).lower())
+          PY
+          )
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            DRAFT=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')
+            if [ "$DRAFT" = true ]; then
+              gh release upload "$TAG" dist/*.tar.gz dist/*.whl dist/SHA256SUMS \
+                --repo "$GITHUB_REPOSITORY" --clobber
+              gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest="$LATEST"
+              exit 0
+            fi
+            ASSETS=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+            for FILE in dist/*.tar.gz dist/*.whl dist/SHA256SUMS; do
+              if ! grep -Fxq "${FILE##*/}" <<< "$ASSETS"; then
+                echo "::error::Published release $TAG is missing ${FILE##*/}. Review its assets before retrying."
+                exit 1
+              fi
+            done
+            echo "Release $TAG is complete; preserving its notes and assets."
+            exit 0
+          fi
+          gh release create "$TAG" dist/*.tar.gz dist/*.whl dist/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
+            --generate-notes --latest="$LATEST"

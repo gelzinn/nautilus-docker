@@ -1,0 +1,73 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump (auto uses Conventional Commits after the first release)'
+        type: choice
+        default: auto
+        options: [auto, patch, minor, major]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.BOT_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.BOT_TOKEN || github.token }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Prepare version and changelog
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: python scripts/release.py prepare --bump "$BUMP" --output "$GITHUB_OUTPUT"
+      - name: Create the release pull request
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          BRANCH="release/$TAG"
+          EXISTING=$(gh pr list --base main --head "$BRANCH" --state open --json url --jq '.[0].url // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Release pull request already exists: $EXISTING"
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            echo "::error::Branch $BRANCH already exists without an open PR. Review it before preparing another release."
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$BRANCH"
+          git add src/nautilus_docker/__init__.py CHANGELOG.md
+          git commit -m "chore: release $TAG"
+          git push origin "$BRANCH"
+
+          cat > "$RUNNER_TEMP/release-pr.md" <<EOF
+          Prepare Nautilus Docker $TAG.
+
+          Updates the package version and promotes the unreleased changelog notes.
+
+          Review the changes and checks, then use **Squash and merge** with the title \
+          \`chore: release $TAG\`. The verified commit on main publishes the release, \
+          source archive, Python wheel and SHA-256 checksums.
+          EOF
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: release $TAG" --body-file "$RUNNER_TEMP/release-pr.md"

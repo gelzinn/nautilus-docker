@@ -1,0 +1,6 @@
+paths:
+  .github/workflows/ci.yml:
+    ignore:
+      # GitHub supports this hosted image; actionlint 1.7.12 has an older label list.
+      # https://github.com/actions/runner-images#available-images
+      - '^label "ubuntu-26\.04" is unknown\.'

@@ -1,0 +1,7 @@
+include LICENSE README.md CHANGELOG.md
+include bin/nautilus-docker
+recursive-include integration *.py
+recursive-include scripts *.py
+recursive-include tests *.py
+recursive-include src/nautilus_docker/resources *.css *.json
+global-exclude __pycache__ *.py[cod]

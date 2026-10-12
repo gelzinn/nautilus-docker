@@ -1,0 +1,13 @@
+window.docker-viewer .navigation-sidebar > row > box { padding: 0 6px; }
+window.docker-viewer .container-table { background-color: var(--view-bg-color); }
+window.docker-viewer .container-table listview > row { min-height: 36px; }
+window.docker-viewer .container-table cell { padding: 6px 10px; }
+window.docker-viewer .container-table header button { font-weight: normal; }
+window.docker-viewer .container-table header label { color: color-mix(in srgb, var(--view-fg-color) 55%, transparent); }
+window.docker-viewer .docker-pathbar {
+  background-color: color-mix(in srgb, var(--window-fg-color) 7%, var(--window-bg-color));
+  border-radius: 9px;
+  padding: 6px 16px;
+}
+window.docker-viewer .docker-status { padding: 8px 16px; color: color-mix(in srgb, var(--view-fg-color) 65%, transparent); }
+window.docker-viewer .docker-notice { padding: 10px 16px; }

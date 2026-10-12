@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nautilus-docker"
+dynamic = ["version"]
+description = "Browse local and SSH Docker resources from GNOME Files"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "gelzin.com"}]
+keywords = ["nautilus", "docker", "gtk", "ssh"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: GTK",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Systems Administration",
+]
+
+[project.urls]
+Homepage = "https://github.com/gelzinn/nautilus-docker"
+Repository = "https://github.com/gelzinn/nautilus-docker"
+Issues = "https://github.com/gelzinn/nautilus-docker/issues"
+Changelog = "https://github.com/gelzinn/nautilus-docker/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = {attr = "nautilus_docker.__version__"}
+
+[project.scripts]
+nautilus-docker = "nautilus_docker.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+nautilus_docker = ["resources/*.json", "resources/*.css"]

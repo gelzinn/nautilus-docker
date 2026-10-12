@@ -1,0 +1,34 @@
+{
+  "containers": {
+    "label": "Containers", "singular": "container", "plural": "containers",
+    "name_key": "Names", "icon": "package-x-generic-symbolic",
+    "command": ["container", "ls", "--all", "--no-trunc"],
+    "fields": ["ID", "Names", "Image", "State", "Status", "Ports", "Mounts", "Networks"],
+    "columns": [["Name", "Names", 220, true], ["Host", "host", 90, false], ["Image", "Image", 150, true], ["State", "State", 115, false], ["Ports", "Ports", 115, true]],
+    "details": [["State", "Status"], ["Image", "Image"], ["ID", "ID"], ["Ports", "Ports"], ["Volumes / mounts", "Mounts"], ["Networks", "Networks"]]
+  },
+  "images": {
+    "label": "Images", "singular": "image", "plural": "images",
+    "name_key": "Repository", "icon": "image-x-generic-symbolic",
+    "command": ["image", "ls", "--all", "--no-trunc"],
+    "fields": ["ID", "Repository", "Tag", "Size", "CreatedAt", "CreatedSince", "Digest"],
+    "columns": [["Repository", "Repository", 240, true], ["Host", "host", 90, false], ["Tag", "Tag", 120, true], ["Size", "Size", 100, false], ["Created", "CreatedSince", 150, true]],
+    "details": [["Repository", "Repository"], ["Tag", "Tag"], ["ID", "ID"], ["Size", "Size"], ["Created", "CreatedAt"], ["Digest", "Digest"]]
+  },
+  "volumes": {
+    "label": "Volumes", "singular": "volume", "plural": "volumes",
+    "name_key": "Name", "icon": "drive-harddisk-symbolic",
+    "command": ["volume", "ls"],
+    "fields": ["Name", "Driver", "Scope", "Labels", "Availability", "Status"],
+    "columns": [["Name", "Name", 320, true], ["Host", "host", 90, false], ["Driver", "Driver", 130, true], ["Scope", "Scope", 130, true]],
+    "details": [["Name", "Name"], ["Driver", "Driver"], ["Scope", "Scope"], ["Labels", "Labels"]]
+  },
+  "networks": {
+    "label": "Networks", "singular": "network", "plural": "networks",
+    "name_key": "Name", "icon": "network-workgroup-symbolic",
+    "command": ["network", "ls", "--no-trunc"],
+    "fields": ["ID", "Name", "Driver", "Scope", "IPv6", "Internal", "Labels"],
+    "columns": [["Name", "Name", 260, true], ["Host", "host", 90, false], ["Driver", "Driver", 120, true], ["Scope", "Scope", 110, false], ["ID", "ID", 120, true]],
+    "details": [["Name", "Name"], ["Driver", "Driver"], ["Scope", "Scope"], ["ID", "ID"], ["IPv6", "IPv6"], ["Internal", "Internal"], ["Labels", "Labels"]]
+  }
+}
