@@ -65,7 +65,7 @@ jobs:
 
           Updates the package version and promotes the unreleased changelog notes.
 
-          Review the changes and checks, then use **Squash and merge** with the title \
+          Review the changes and checks, then merge with the pull request title \
           \`chore: release $TAG\`. The verified commit on main publishes the release, \
           source archive, Python wheel and SHA-256 checksums.
           EOF

@@ -45,6 +45,15 @@ def package_version(root):
     return path, contents, matches[0], version
 
 
+def detect(root):
+    lines = git(root, "log", "-1", "--format=%B").strip().splitlines()
+    subject = lines[0]
+    if re.fullmatch(r"Merge pull request #[1-9][0-9]* from \S+", subject):
+        subject = next((line for line in lines[1:] if line.strip()), "")
+    match = re.fullmatch(r"chore: release v(" + VERSION_PATTERN + r")(?: \(#[0-9]+\))?", subject)
+    return match.group(1) if match else None
+
+
 def release_history(root):
     git(root, "rev-parse", "--git-dir")
     head = subprocess.run(
@@ -148,12 +157,17 @@ def main():
     prepare_parser.add_argument("--output", type=Path, help="append version and tag to GitHub output file")
     check_parser = commands.add_parser("check", help="validate a version before packaging")
     check_parser.add_argument("--version", required=True)
+    commands.add_parser("detect", help="read the release version from a squash or merge commit")
     args = parser.parse_args()
     try:
         if args.command == "prepare":
             print(prepare(ROOT, args.bump, args.output))
-        else:
+        elif args.command == "check":
             check(ROOT, args.version)
+        else:
+            version = detect(ROOT)
+            if version is not None:
+                print(version)
     except (ReleaseError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

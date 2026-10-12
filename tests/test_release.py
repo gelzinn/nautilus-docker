@@ -69,6 +69,37 @@ class ReleaseTests(unittest.TestCase):
         self.cli("prepare")
         self.assertIn("- Initial release.", (self.root / "CHANGELOG.md").read_text())
 
+    def test_detect_accepts_release_commit_and_github_squash_suffix(self):
+        for subject in ("chore: release v0.1.0", "chore: release v1.20.300 (#12)"):
+            with self.subTest(subject=subject):
+                self.commit(self.root, subject)
+                expected = "0.1.0\n" if "v0.1.0" in subject else "1.20.300\n"
+                self.assertEqual(self.cli("detect").stdout, expected)
+
+    def test_detect_accepts_normal_github_merge_of_release_pull_request(self):
+        self.commit(self.root, "initial commit")
+        self.git(self.root, "switch", "-c", "release/v0.1.0")
+        self.commit(self.root, "chore: release v0.1.0")
+        self.git(self.root, "switch", "main")
+        self.git(self.root, "merge", "--no-ff", "release/v0.1.0", "-m",
+                 "Merge pull request #1 from gelzinn/release/v0.1.0\n\nchore: release v0.1.0")
+        self.assertEqual(self.cli("detect").stdout, "0.1.0\n")
+
+    def test_detect_ignores_non_release_merges_and_body_mentions(self):
+        for message in ("initial commit", "docs: describe releases\n\nchore: release v0.1.0",
+                        "Merge pull request #2 from owner/docs\n\ndocs: revise README\n\nchore: release v0.1.0"):
+            with self.subTest(message=message):
+                self.commit(self.root, message)
+                self.assertEqual(self.cli("detect").stdout, "")
+
+    def test_detect_ignores_invalid_versions_and_arbitrary_shell_text(self):
+        for subject in ("chore: release v01.2.3", "chore: release v1.2.3-rc.1",
+                        "chore: release v0.1.0; touch injected"):
+            with self.subTest(subject=subject):
+                self.commit(self.root, subject)
+                self.assertEqual(self.cli("detect").stdout, "")
+                self.assertFalse((self.root / "injected").exists())
+
     def test_manual_notes_and_older_releases_are_preserved(self):
         notes = "### Added\n\n- Native Docker sidebar.\n\n## [0.0.1] - 2026-01-01\n\n- Earlier release.\n"
         (self.root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n" + notes)

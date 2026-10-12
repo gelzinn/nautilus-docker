@@ -28,16 +28,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SUBJECT=$(git log -1 --format=%s)
-          if [[ "$SUBJECT" =~ ^chore:\ release\ v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\ \(#[0-9]+\))?$ ]]; then
-            VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
-          else
+          VERSION=$(python3 scripts/release.py detect)
+          if [ -z "$VERSION" ]; then
             echo 'No release commit at HEAD.'
             exit 0
           fi
           VERIFIED=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.commit.verification.verified')
           if [ "$VERIFIED" != true ]; then
-            echo '::error::Release commits must have a verified signature. Squash and merge the release PR on GitHub.'
+            echo '::error::Release commits must have a verified signature. Merge the release PR on GitHub.'
             exit 1
           fi
           python3 scripts/release.py check --version "$VERSION"
